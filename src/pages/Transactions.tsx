@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../hooks/useStore';
 import { formatCurrency, formatDate, downloadCSV } from '../lib/utils';
-import { Plus, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Filter, Calendar, Edit2, Trash2, Download } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Filter, Calendar, Edit2, Trash2, Download, Image as ImageIcon, X } from 'lucide-react';
 import { TransactionType, Transaction } from '../types';
 
 export default function Transactions() {
@@ -21,7 +21,8 @@ export default function Transactions() {
     amount: 0,
     category: '',
     accountId: '',
-    description: ''
+    description: '',
+    attachment: ''
   });
 
   // Derive unique categories from existing transactions
@@ -39,7 +40,8 @@ export default function Transactions() {
         amount: formData.amount,
         category: formData.category,
         accountId: formData.accountId,
-        description: formData.description
+        description: formData.description,
+        attachment: formData.attachment
       });
     } else {
       addTransaction({
@@ -48,7 +50,8 @@ export default function Transactions() {
         amount: formData.amount,
         category: formData.category,
         accountId: formData.accountId,
-        description: formData.description
+        description: formData.description,
+        attachment: formData.attachment
       });
     }
     closeModal();
@@ -62,7 +65,8 @@ export default function Transactions() {
       amount: t.amount,
       category: t.category,
       accountId: t.accountId,
-      description: t.description || ''
+      description: t.description || '',
+      attachment: t.attachment || ''
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -78,8 +82,25 @@ export default function Transactions() {
       amount: 0,
       category: '',
       accountId: '',
-      description: ''
+      description: '',
+      attachment: ''
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Create a warning if file is too large (over 1MB) for localstorage
+      if (file.size > 1024 * 1024) {
+        alert('File terlalu besar. Maksimal 1MB untuk penyimpanan lokal.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, attachment: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -194,7 +215,15 @@ export default function Transactions() {
                          t.type === 'Expense' ? <ArrowDownRight className="w-4 h-4" /> :
                          <ArrowRightLeft className="w-4 h-4" />}
                       </div>
-                      {t.description || '-'}
+                      <div className="flex flex-col">
+                        <span>{t.description || '-'}</span>
+                        {t.attachment && (
+                          <div className="flex items-center gap-1 text-xs text-sky-600 mt-1 cursor-pointer">
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Lihat Bukti</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-600">
@@ -290,14 +319,16 @@ export default function Transactions() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Akun</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Sumber Dana (Akun)
+                </label>
                 <select
                   required
                   className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
                   value={formData.accountId}
                   onChange={e => setFormData({...formData, accountId: e.target.value})}
                 >
-                  <option value="">Pilih Akun</option>
+                  <option value="">Pilih Sumber/Tujuan Dana</option>
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                   ))}
@@ -319,10 +350,43 @@ export default function Transactions() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Keterangan</label>
                 <textarea
                   className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
-                  rows={3}
+                  rows={2}
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Bukti Transaksi (Opsional)</label>
+                
+                {formData.attachment ? (
+                  <div className="relative mt-2 rounded-xl overflow-hidden border border-slate-200 inline-block">
+                    <img src={formData.attachment} alt="Bukti Transaksi" className="h-32 object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => setFormData(prev => ({...prev, attachment: ''}))}
+                      className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-slate-700 hover:text-rose-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-sky-500 transition-colors bg-slate-50">
+                    <div className="space-y-1 text-center">
+                      <ImageIcon className="mx-auto h-12 w-12 text-slate-400" />
+                      <div className="flex text-sm text-slate-600 justify-center">
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer rounded-md font-medium text-sky-600 hover:text-sky-500 focus-within:outline-none"
+                        >
+                          <span>Upload file</span>
+                          <input id="file-upload" name="file-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} />
+                        </label>
+                      </div>
+                      <p className="text-xs text-slate-500">PNG, JPG up to 1MB</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 mt-6">

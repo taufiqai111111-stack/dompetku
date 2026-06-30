@@ -34,6 +34,7 @@ export default function Layout() {
     { to: '/aset', icon: Box, label: 'Aset', color: 'text-teal-600' },
     { to: '/transaksi', icon: History, label: 'Transaksi', color: 'text-slate-600' },
     { to: '/piutang', icon: HandCoins, label: 'Piutang', color: 'text-blue-600' },
+    { to: '/hutang', icon: HandCoins, label: 'Hutang', color: 'text-rose-600' },
   ];
 
   return (

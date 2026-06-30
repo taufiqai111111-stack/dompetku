@@ -8,6 +8,7 @@ import Investments from './pages/Investments';
 import Assets from './pages/Assets';
 import Transactions from './pages/Transactions';
 import Receivables from './pages/Receivables';
+import Debts from './pages/Debts';
 import Login from './pages/Login';
 
 const ProtectedRoute = () => {
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="aset" element={<Assets />} />
             <Route path="transaksi" element={<Transactions />} />
             <Route path="piutang" element={<Receivables />} />
+            <Route path="hutang" element={<Debts />} />
           </Route>
         </Route>
       </Routes>

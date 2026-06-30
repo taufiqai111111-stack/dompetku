@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Account, Transaction, Investment, Asset, Receivable } from '../types';
+import { Account, Transaction, Investment, Asset, Receivable, Debt } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 // Initial Mock Data
@@ -27,6 +27,10 @@ const initialReceivables: Receivable[] = [
   { id: '1', debtorName: 'Budi', amount: 100000, dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), status: 'Unpaid', description: 'Pinjam uang makan' },
 ];
 
+const initialDebts: Debt[] = [
+  { id: '1', creditorName: 'Andi', amount: 500000, dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), status: 'Unpaid', description: 'Pinjam bayar kos' },
+];
+
 export function useStore() {
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const saved = localStorage.getItem('accounts');
@@ -51,6 +55,11 @@ export function useStore() {
   const [receivables, setReceivables] = useState<Receivable[]>(() => {
     const saved = localStorage.getItem('receivables');
     return saved ? JSON.parse(saved) : initialReceivables;
+  });
+
+  const [debts, setDebts] = useState<Debt[]>(() => {
+    const saved = localStorage.getItem('debts');
+    return saved ? JSON.parse(saved) : initialDebts;
   });
 
   const [platforms, setPlatforms] = useState<string[]>(() => {
@@ -81,6 +90,10 @@ export function useStore() {
   useEffect(() => {
     localStorage.setItem('receivables', JSON.stringify(receivables));
   }, [receivables]);
+
+  useEffect(() => {
+    localStorage.setItem('debts', JSON.stringify(debts));
+  }, [debts]);
 
   useEffect(() => {
     localStorage.setItem('platforms', JSON.stringify(platforms));
@@ -238,12 +251,43 @@ export function useStore() {
     setReceivables(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };
 
+  // --- Debts ---
+
+  const addDebt = (debt: Omit<Debt, 'id'>, destinationAccountId?: string) => {
+    setDebts([...debts, { ...debt, id: uuidv4() }]);
+
+    // Add to account if destination selected (receiving loan money)
+    if (destinationAccountId) {
+      addTransaction({
+        date: new Date().toISOString(),
+        type: 'Income',
+        amount: debt.amount,
+        category: 'Hutang',
+        accountId: destinationAccountId,
+        description: `Hutang dari: ${debt.creditorName}`
+      });
+    }
+  };
+
+  const deleteDebt = (id: string) => {
+    setDebts(prev => prev.filter(d => d.id !== id));
+  };
+
+  const updateDebt = (id: string, updated: Partial<Debt>) => {
+    setDebts(prev => prev.map(d => d.id === id ? { ...d, ...updated } : d));
+  };
+
+  const updateDebtStatus = (id: string, status: 'Paid' | 'Unpaid') => {
+    setDebts(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+  };
+
   return {
     accounts,
     transactions,
     investments,
     assets,
     receivables,
+    debts,
     platforms,
     addTransaction,
     deleteTransaction,
@@ -261,6 +305,10 @@ export function useStore() {
     deleteReceivable,
     updateReceivable,
     updateReceivableStatus,
+    addDebt,
+    deleteDebt,
+    updateDebt,
+    updateDebtStatus,
     isAuthenticated,
     login,
     logout

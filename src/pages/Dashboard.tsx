@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../hooks/useStore';
 import { formatCurrency, cn, formatDate } from '../lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Wallet, ArrowRightLeft, Building2, TrendingUp, HandCoins, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, ArrowRightLeft, Building2, TrendingUp, HandCoins, ChevronDown, ChevronUp, Calendar, Plus } from 'lucide-react';
+import { TransactionType } from '../types';
 
 export default function Dashboard() {
-  const { accounts, transactions, investments, receivables } = useStore();
+  const { accounts, transactions, investments, receivables, addTransaction } = useStore();
   
   // Date filter state
   const [startDate, setStartDate] = useState(() => {
@@ -18,6 +19,47 @@ export default function Dashboard() {
   const [showAccounts, setShowAccounts] = useState(true);
   const [showInvestments, setShowInvestments] = useState(true);
   const [showReceivables, setShowReceivables] = useState(true);
+
+  // Transaction Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    type: 'Expense' as TransactionType,
+    amount: 0,
+    category: '',
+    accountId: '',
+    description: ''
+  });
+
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set(transactions.map(t => t.category).filter(Boolean));
+    return Array.from(categories).sort();
+  }, [transactions]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addTransaction({
+      date: new Date(formData.date).toISOString(),
+      type: formData.type,
+      amount: formData.amount,
+      category: formData.category,
+      accountId: formData.accountId,
+      description: formData.description
+    });
+    closeModal();
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      type: 'Expense',
+      amount: 0,
+      category: '',
+      accountId: '',
+      description: ''
+    });
+  };
 
   const totalCash = accounts.reduce((acc, curr) => acc + curr.balance, 0);
   const totalInvestments = investments.reduce((acc, curr) => acc + curr.currentValue, 0);
@@ -344,8 +386,15 @@ export default function Dashboard() {
 
       {/* Recent Transactions */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-slate-900">Transaksi Terakhir</h3>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah
+          </button>
         </div>
         <div className="divide-y divide-slate-100">
           {transactions.slice(0, 5).map((t) => (
@@ -379,6 +428,114 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Transaction Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">Catat Transaksi</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-4">
+                {(['Income', 'Expense'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFormData({...formData, type})}
+                    className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                      formData.type === type 
+                        ? 'bg-white shadow-sm text-slate-900' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {type === 'Income' ? 'Pemasukan' : 'Pengeluaran'}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={formData.amount}
+                  onChange={e => setFormData({...formData, amount: Number(e.target.value)})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                <input
+                  type="text"
+                  required
+                  list="category-list"
+                  className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={formData.category}
+                  onChange={e => setFormData({...formData, category: e.target.value})}
+                  placeholder="Pilih atau ketik baru"
+                />
+                <datalist id="category-list">
+                  {uniqueCategories.map(cat => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sumber Dana (Akun)</label>
+                <select
+                  required
+                  className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={formData.accountId}
+                  onChange={e => setFormData({...formData, accountId: e.target.value})}
+                >
+                  <option value="">Pilih Sumber/Tujuan Dana</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+                  value={formData.date}
+                  onChange={e => setFormData({...formData, date: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Keterangan</label>
+                <textarea
+                  className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+                  rows={2}
+                  value={formData.description}
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

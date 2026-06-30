@@ -1,6 +1,7 @@
 export type AccountType = 'Cash' | 'Bank' | 'E-Wallet' | 'Investment';
 export type TransactionType = 'Income' | 'Expense' | 'Transfer';
 export type ReceivableStatus = 'Paid' | 'Unpaid';
+export type DebtStatus = 'Paid' | 'Unpaid';
 
 export interface Account {
   id: string;
@@ -18,6 +19,7 @@ export interface Transaction {
   accountId: string;
   toAccountId?: string; // For transfers
   description?: string;
+  attachment?: string; // Image base64 string for receipts
 }
 
 export interface Investment {
@@ -43,5 +45,14 @@ export interface Receivable {
   amount: number;
   dueDate: string;
   status: ReceivableStatus;
+  description?: string;
+}
+
+export interface Debt {
+  id: string;
+  creditorName: string;
+  amount: number;
+  dueDate: string;
+  status: DebtStatus;
   description?: string;
 }
